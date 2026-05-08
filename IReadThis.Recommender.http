@@ -1,0 +1,10 @@
+@IReadThis.Recommender_HostAddress = http://localhost:5179
+
+GET {{IReadThis.Recommender_HostAddress}}/bookcatalog/
+Accept: application/json
+
+###
+
+GET {{IReadThis.Recommender_HostAddress}}/recommendations/
+
+###
