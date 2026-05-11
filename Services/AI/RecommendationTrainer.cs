@@ -44,6 +44,10 @@ namespace IReadThis.Recommender.Services.AI
             TextInput = textInput;
             BookVector = bookVector;
         }
+
+        public RecommendationTrainerData(Session session, ReaderTowerModel readerModel, BookTowerModel bookModel) : 
+            this(session, readerModel.SexInput, readerModel.YearInput, readerModel.ReaderVectorOutput, bookModel.CategoryInput, bookModel.TextInput, bookModel.FinalEmbedding)
+        {}
     }
     public class TrainBatchData
     {
