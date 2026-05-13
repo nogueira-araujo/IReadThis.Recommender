@@ -8,3 +8,5 @@ Accept: application/json
 GET {{IReadThis.Recommender_HostAddress}}/recommendations/
 
 ###
+
+POST {{IReadThis.Recommender_HostAddress}}/admin/
