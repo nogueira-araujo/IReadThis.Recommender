@@ -2,6 +2,7 @@
 using DynamicDtoCore;
 using Google.Protobuf.WellKnownTypes;
 using IReadThis.Recommender.Services.AI;
+using IReadThis.Recommender.Services.DB;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,11 +54,10 @@ namespace IReadThis.Recommender
             // =====================================================================
             var readerTower = ReaderTowerCoreBuilder.BuildReaderTowerCore();
 
-            // A Sessão fica permanentemente aberta na memória para atender as requisições web.
-            var readerSession = tf.Session();
-            readerSession.run(tf.global_variables_initializer());
+            Console.WriteLine("Consultando o repositório por inteligência prévia...");
+            var session = ModelCheckpointRepository.LoadLatestCheckpoint();
 
-            var readerGenerator = new ReaderEmbeddingGenerator(readerSession, readerTower.SexInput, readerTower.YearInput, readerTower.ReaderVectorOutput);
+            var readerGenerator = new ReaderEmbeddingGenerator(session, readerTower.SexInput, readerTower.YearInput, readerTower.ReaderVectorOutput);
 
             // Registramos o Gerador (que envelopa a Sessão) como Singleton e o Serviço como Scoped
             builder.Services.AddSingleton<ReaderEmbeddingGenerator>(readerGenerator);
@@ -69,7 +69,7 @@ namespace IReadThis.Recommender
             // Mantido como Transient. Em uma refatoração futura para rodar automaticamente, 
             // ele pode ser injetado através de um worker: builder.Services.AddHostedService<EngineWorker>();
             builder.Services.AddTransient<RecommendationEngine>();
-            return readerSession;
+            return session;
         }
 
         /// <summary>
