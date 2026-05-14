@@ -15,11 +15,13 @@ namespace IReadThis.Recommender.Controllers
         private readonly ILogger<RecommendationController> _logger;
         // Interface que será implementada no Passo 3
         private readonly IRecommendationEngine _engine;
+        private readonly RecommendationService _recomendationService;
 
-        public RecommendationController(ILogger<RecommendationController> logger, IRecommendationEngine engine)
+        public RecommendationController(ILogger<RecommendationController> logger, IRecommendationEngine engine, RecommendationService recomendationService)
         {
             _logger = logger;
             _engine = engine;
+            _recomendationService = recomendationService;
         }
 
         // ENDPOINT 1: Recomendação Baseada no ID do Perfil
@@ -29,7 +31,7 @@ namespace IReadThis.Recommender.Controllers
         {
             try
             {
-                var books = await RecommendationService.GetRecommendationsAsync(id, null, null);
+                var books = await this._recomendationService.GetRecommendationsAsync(id, null, null);
                 return Ok(books);
             }
             catch (Exception ex)
@@ -46,7 +48,7 @@ namespace IReadThis.Recommender.Controllers
         {
             try
             {
-                var books = await RecommendationService.GetRecommendationsAsync(null, birthYear, sex);
+                var books = await this._recomendationService.GetRecommendationsAsync(null, birthYear, sex);
                 return Ok(books);
             }
             catch (Exception ex)

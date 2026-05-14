@@ -1,6 +1,6 @@
 ﻿namespace IReadThis.Recommender.Models
 {
-    internal sealed class TrainBatchData
+    public sealed class TrainBatchData
     {
         public TrainBatchData() { }
         public TrainBatchData(int[] birthYears, int[] sexIds, int[,] paddedCategories, int[,] textTokens, float[] trueRatings) : this()
