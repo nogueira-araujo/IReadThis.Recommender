@@ -64,19 +64,19 @@ namespace IReadThis.Recommender.Services.AI
                     b.ReleaseYear, 
                     b.PageCount
                 FROM Books b
-                INNER JOIN BookEmbeddings be ON b.BookId = be.BookId
-                ORDER BY VECTOR_DISTANCE('cosine', be.Embedding, CAST(@ReaderVector AS VECTOR(768))) ASC
+                INNER JOIN Sidecar_BookEmbeddings be ON b.BookId = be.BookId
+                ORDER BY VECTOR_DISTANCE('cosine', be.Embedding, CAST({0} AS VECTOR(768))) ASC
             ";
             IEnumerable<IBook> toReturn = new IBook[0];
             using (var conn = ProviderHelper.CreateConnection())
             {
                 var command = conn.CreateCommand();
-                var vectoParam = command.CreateParameter();
+                /*var vectoParam = command.CreateParameter();
                 vectoParam.ParameterName = "@ReaderVector";
                 vectoParam.Value = jsonVector;
-                command.Parameters.Add(vectoParam);
+                command.Parameters.Add(vectoParam);*/
                 var factory = new DynamicClassFactory(command);
-                toReturn = factory.Select<IBook>(recommendQuery);
+                toReturn = factory.Select<IBook>(recommendQuery,jsonVector);
             }
 
             return toReturn;

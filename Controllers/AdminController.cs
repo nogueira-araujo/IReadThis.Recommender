@@ -9,10 +9,10 @@ namespace IReadThis.Recommender.Controllers
     [Route("api/[controller]")]
     public class AdminController : ControllerBase
     {
-        private readonly RecommendationEngine _recommendationEngine;
+        private readonly IRecommendationEngine _recommendationEngine;
 
         // Injetamos a engine de lote que registramos como Transient no Program.cs
-        public AdminController(RecommendationEngine recommendationEngine)
+        public AdminController(IRecommendationEngine recommendationEngine)
         {
             _recommendationEngine = recommendationEngine ?? throw new ArgumentNullException(nameof(recommendationEngine));
         }

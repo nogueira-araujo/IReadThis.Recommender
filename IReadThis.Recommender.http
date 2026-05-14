@@ -1,12 +1,14 @@
 @IReadThis.Recommender_HostAddress = http://localhost:5179
 
-GET {{IReadThis.Recommender_HostAddress}}/bookcatalog/
+GET {{IReadThis.Recommender_HostAddress}}/BookCatalog/
 Accept: application/json
 
 ###
 
-GET {{IReadThis.Recommender_HostAddress}}/recommendations/
+GET {{IReadThis.Recommender_HostAddress}}/Recommendation/
+Accept: application/json
 
 ###
 
-POST {{IReadThis.Recommender_HostAddress}}/admin/
+POST {{IReadThis.Recommender_HostAddress}}/Admin/
+Content-Type: application/json

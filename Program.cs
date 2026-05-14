@@ -68,7 +68,8 @@ namespace IReadThis.Recommender
             // =====================================================================
             // Mantido como Transient. Em uma refatoração futura para rodar automaticamente, 
             // ele pode ser injetado através de um worker: builder.Services.AddHostedService<EngineWorker>();
-            builder.Services.AddTransient<RecommendationEngine>();
+            builder.Services.AddTransient<IRecommendationEngine, RecommendationEngine>();
+            //builder.Services.AddTransient<RecommendationEngine>();
             return session;
         }
 

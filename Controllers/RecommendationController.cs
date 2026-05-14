@@ -44,8 +44,16 @@ namespace IReadThis.Recommender.Controllers
         [HttpGet("generic")]
         public async Task<IActionResult> GetGeneric([FromQuery] int birthYear, [FromQuery] string sex)
         {
-            var books = await RecommendationService.GetRecommendationsAsync(null, birthYear, sex);
-            return Ok(books);
+            try
+            {
+                var books = await RecommendationService.GetRecommendationsAsync(null, birthYear, sex);
+                return Ok(books);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao processar recomendação genérica.");
+                return StatusCode(500, "Erro interno no processamento da recomendação.");
+            }
         }
     }
 }
