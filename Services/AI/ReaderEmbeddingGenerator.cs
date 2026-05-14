@@ -12,6 +12,8 @@ namespace IReadThis.Recommender.Services.AI
         private readonly Tensor _yearInput;
         private readonly Tensor _readerVectorOutput;
 
+        public Session Session { get { return _session; } }
+
         public ReaderEmbeddingGenerator(Session session, Tensor sexInput, Tensor yearInput, Tensor readerVectorOutput)
         {
             _session = session;

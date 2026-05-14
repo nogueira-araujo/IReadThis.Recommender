@@ -49,27 +49,22 @@ namespace IReadThis.Recommender
         /// <param name="builder"></param>
         private static Session PrepareServices(WebApplicationBuilder builder)
         {
-            // =====================================================================
-            // 1. IA - TORRE DO LEITOR (TEMPO REAL / INFERÊNCIA)
-            // =====================================================================
-            var readerTower = ReaderTowerCoreBuilder.BuildReaderTowerCore();
-
-            Console.WriteLine("Consultando o repositório por inteligência prévia...");
+            // 1. Carrega o checkpoint mais recente do SQL ou inicializa novo
+            Console.WriteLine("Carregando inteligência persistida...");
             var session = ModelCheckpointRepository.LoadLatestCheckpoint();
 
-            var readerGenerator = new ReaderEmbeddingGenerator(session, readerTower.SexInput, readerTower.YearInput, readerTower.ReaderVectorOutput);
+            // 2. Constrói os grafos (Towers)
+            var readerTower = ReaderTowerCoreBuilder.BuildReaderTowerCore();
+            var bookTower = BookTowerCoreBuilder.BuildBookTowerCore();
 
-            // Registramos o Gerador (que envelopa a Sessão) como Singleton e o Serviço como Scoped
+            // 3. Registra os Geradores como Singletons (compartilhando a mesma Session)
+            var readerGenerator = new ReaderEmbeddingGenerator(session, readerTower.SexInput, readerTower.YearInput, readerTower.ReaderVectorOutput);
             builder.Services.AddSingleton<ReaderEmbeddingGenerator>(readerGenerator);
+
+            // 4. Registra a Engine e o Serviço
+            builder.Services.AddScoped<IRecommendationEngine, RecommendationEngine>();
             builder.Services.AddScoped<RecommendationService>();
 
-            // =====================================================================
-            // 2. IA - TORRE DO LIVRO (LOTE / BACKGROUND)
-            // =====================================================================
-            // Mantido como Transient. Em uma refatoração futura para rodar automaticamente, 
-            // ele pode ser injetado através de um worker: builder.Services.AddHostedService<EngineWorker>();
-            builder.Services.AddTransient<IRecommendationEngine, RecommendationEngine>();
-            //builder.Services.AddTransient<RecommendationEngine>();
             return session;
         }
 

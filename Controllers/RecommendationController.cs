@@ -23,7 +23,7 @@ namespace IReadThis.Recommender.Controllers
         }
 
         // ENDPOINT 1: Recomendação Baseada no ID do Perfil
-        // GET: api/recommendations/profile/15
+        // GET: api/recommendation/profile/15
         [HttpGet("profile/{id}")]
         public async Task<IActionResult> GetByProfile(int id)
         {
@@ -40,7 +40,7 @@ namespace IReadThis.Recommender.Controllers
         }
 
         // ENDPOINT 2: Recomendação Genérica (Cold Start)
-        // GET: api/recommendations/generic?birthYear=1990&sex=M
+        // GET: api/recommendation/generic?birthYear=1990&sex=M
         [HttpGet("generic")]
         public async Task<IActionResult> GetGeneric([FromQuery] int birthYear, [FromQuery] string sex)
         {

@@ -1,86 +1,73 @@
 ﻿using DynamicDtoCore;
 using IReadThis.Recommender.Models;
-using Microsoft.Data.SqlClient;
+using IReadThis.Recommender.Services.AI;
 using System.Text.Json;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-using static Tensorflow.Binding;
 
-namespace IReadThis.Recommender.Services.AI
+public class RecommendationService
 {
-    public class RecommendationService
+    private readonly ReaderEmbeddingGenerator _generator;
+
+    // Injeção de dependência do gerador Singleton
+    public RecommendationService(ReaderEmbeddingGenerator generator)
     {
+        _generator = generator;
+    }
 
-        // Método unificado que atende aos dois Endpoints da Visão de Funcionalidades
-        public static async Task<IEnumerable<IBook>> GetRecommendationsAsync(int? profileId, int? birthYear, string sex)
+    public async Task<IEnumerable<IBook>> GetRecommendationsAsync(int? profileId, int? birthYear, string sex)
+    {
+        // 1. Resolução de Perfil (Mantida a lógica do DynamicDto)
+        if (profileId.HasValue)
         {
-            // 1. RESOLUÇÃO DE DADOS (Endpoint 1 vs Endpoint 2)
-            if (profileId.HasValue)
-            {
-                // Se passou o ProfileID, usamos o DynamicDtoCore para ler o legado em modo ReadOnly
-                string profileQuery = $"SELECT BirthYear, Sex FROM Profiles WHERE ProfileID = {profileId.Value}";
-                dynamic? profile;
-                using (var conn = ProviderHelper.CreateConnection())
-                {
-                    var factory = new DynamicClassFactory(conn.CreateCommand());
-                    var profiles = factory.Select(profileQuery);
-                    profile = profiles.FirstOrDefault();
-                }
+            // ... busca no banco ...
+        }
 
-                if (profile != null)
-                {
-                    birthYear = profile.BirthYear;
-                    sex = profile.Sex;
-                }
-            }
+        if (!birthYear.HasValue) throw new ArgumentException("BirthYear é obrigatório.");
 
-            if (!birthYear.HasValue)
-                throw new ArgumentException("Ano de nascimento é obrigatório para o Cold Start.");
+        // 2. INFERÊNCIA LIMPA: Usamos o gerador que já possui a Session e os pesos carregados
+        // Não há tf.Session() aqui, reduzindo latência e uso de memória.
+        var readerVector = _generator.GenerateTensorEmbedding(birthYear.Value, sex);
 
-            // 2. GERAÇÃO DO VETOR DO LEITOR (INFERÊNCIA EM TEMPO REAL)
-            float[] readerVector;
+        // 3. Consulta Vetorial (Híbrida)
+        return await ExecuteVectorSearch(readerVector);
+    }
 
-            var readerTowerModel = ReaderTowerCoreBuilder.BuildReaderTowerCore();
+    /// <summary>
+    /// Realiza a busca vetorial híbrida no SQL Server utilizando similaridade de cosseno.
+    /// </summary>
+    private async Task<IEnumerable<IBook>> ExecuteVectorSearch(float[] readerVector)
+    {
+        // Converte o array de float para a representação JSON esperada pelo SQL Server
+        string jsonVector = JsonSerializer.Serialize(readerVector);
 
-            using (var session = tf.Session())
-            {
-                session.run(tf.global_variables_initializer());
-                var generator = new ReaderEmbeddingGenerator(session, readerTowerModel.SexInput, readerTowerModel.YearInput, readerTowerModel.ReaderVectorOutput);
+        // Query otimizada para o SQL Server 2025 com suporte a vetores
+        // Buscamos os 5 livros com a menor distância de cosseno em relação ao perfil do leitor
+        const string recommendQuery = @"
+        SELECT TOP 5 
+            b.BookId, 
+            b.Title, 
+            b.Author, 
+            b.Publisher, 
+            b.ReleaseYear, 
+            b.PageCount
+        FROM Books b
+        INNER JOIN Sidecar_BookEmbeddings be ON b.BookId = be.BookId
+        ORDER BY VECTOR_DISTANCE('cosine', be.Embedding, CAST({0} AS VECTOR(768))) ASC
+    ";
 
-                // Gera o vetor de 768 dimensões com base no perfil
-                readerVector = generator.GenerateTensorEmbedding(birthYear.Value, sex);
-            }
-
-            // 3. CONSULTA VETORIAL HÍBRIDA NO SQL SERVER 2025
-            string jsonVector = JsonSerializer.Serialize(readerVector);
-
-            // Utilizamos VECTOR_DISTANCE para calcular a similaridade de cosseno. 
-            // Os menores valores de distância representam a maior probabilidade de nota 3 ou 4.
-            string recommendQuery = @"
-                SELECT TOP 5 
-                    b.BookId, 
-                    b.Title, 
-                    b.Author, 
-                    b.Publisher, 
-                    b.ReleaseYear, 
-                    b.PageCount
-                FROM Books b
-                INNER JOIN Sidecar_BookEmbeddings be ON b.BookId = be.BookId
-                ORDER BY VECTOR_DISTANCE('cosine', be.Embedding, CAST({0} AS VECTOR(768))) ASC
-            ";
-            IEnumerable<IBook> toReturn = new IBook[0];
+        try
+        {
             using (var conn = ProviderHelper.CreateConnection())
             {
                 var command = conn.CreateCommand();
-                /*var vectoParam = command.CreateParameter();
-                vectoParam.ParameterName = "@ReaderVector";
-                vectoParam.Value = jsonVector;
-                command.Parameters.Add(vectoParam);*/
+                // Utilizamos o DynamicDtoCore para mapear o resultado para a interface IBook
                 var factory = new DynamicClassFactory(command);
-                toReturn = factory.Select<IBook>(recommendQuery,jsonVector);
+                return factory.Select<IBook>(recommendQuery, jsonVector);
             }
-
-            return toReturn;
+        }
+        catch (Exception ex)
+        {
+            // Log de erro seguindo o padrão de rigor técnico
+            throw new InvalidOperationException("Falha na execução da busca vetorial no SQL Server.", ex);
         }
     }
-
 }

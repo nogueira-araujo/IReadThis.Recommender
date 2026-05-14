@@ -23,6 +23,9 @@ namespace IReadThis.Recommender.Controllers
         /// e persiste os pesos do modelo em ModelCheckpoints.
         /// </summary>
         /// <param name="epochs">Número de épocas para o treinamento (Padrão: 10)</param>
+        /// <example>
+        /// POST https://localhost:7109/api/admin/train?epochs=10
+        /// </example>
         [HttpPost("train")]
         public async Task<IActionResult> TrainModel([FromQuery] int epochs = 10)
         {
