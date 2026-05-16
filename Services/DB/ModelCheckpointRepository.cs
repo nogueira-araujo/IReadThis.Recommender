@@ -8,13 +8,16 @@ namespace IReadThis.Recommender.Services.DB
 {
     public static class ModelCheckpointRepository
     {
+        const string FILE_NAME = "model.ckpt";
+        const string ZIP_FILE_EXTENSION = ".zip";
+
         private static readonly string tempFileDir = Path.Combine(Path.GetTempPath(), "IReadThis_Train_" + Guid.NewGuid());
         public static string TempFileDir {  get { return tempFileDir; } }
         public static Task SaveCheckpointAsync(this Session session, int epochs) {
             try
             {
                 Directory.CreateDirectory(tempFileDir);
-                string checkpointPrefix = Path.Combine(tempFileDir, "model.ckpt");
+                string checkpointPrefix = Path.Combine(tempFileDir, FILE_NAME);
 
                 var saver = tf.train.Saver();
                 saver.save(session, checkpointPrefix);
@@ -32,26 +35,34 @@ namespace IReadThis.Recommender.Services.DB
         // Método para compactar e salvar os pesos no SQL Server
         private static void SaveCheckpointAsync(string checkpointDirectory, int epochs)
         {
-            string tempZipPath = checkpointDirectory + ".zip";
+            string tempZipPath = Path.Combine(checkpointDirectory + ZIP_FILE_EXTENSION);
             ZipFile.CreateFromDirectory(checkpointDirectory, tempZipPath);
             byte[] zipBytes = File.ReadAllBytes(tempZipPath);
 
             using (var connection = ProviderHelper.CreateConnection())
             {
+                connection.Open();
                 string insertQuery = @"
-                    INSERT INTO ModelCheckpoints (VersionName, ModelZipData) 
+                    INSERT INTO Sidecar_ModelCheckpoints (VersionName, ModelZipData) 
                     VALUES (@Version, @Data)";
                 var command = ProviderHelper.CreateCommand(connection, insertQuery);
+                command.CommandType = System.Data.CommandType.Text;
 
                 var param1 = command.CreateParameter();
                     param1.ParameterName = "@Version";
-                    param1.Value = $"Epochs_{epochs}_" + DateTime.Now.ToString("yyyyMMddHHmm");
+                     var value = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                    param1.Value = value;
+                    param1.DbType = System.Data.DbType.String;
+                    param1.Size = value.Length;
                 var param2 = command.CreateParameter();
                     param2.ParameterName = "@Data";
                     param2.Value = zipBytes;
+                    param2.Size = zipBytes.Length;
+                    param2.DbType = System.Data.DbType.Binary;
 
                 command.Parameters.Add(param1);
                 command.Parameters.Add(param2);
+                command.Prepare();
                 command.ExecuteNonQuery();
             }
 
@@ -59,9 +70,9 @@ namespace IReadThis.Recommender.Services.DB
         }
 
         // Método para resgatar e extrair o Checkpoint mais recente
-        public static Session LoadLatestCheckpoint()
+        public static  async Task LoadLatestCheckpointAsync(Session session)
         {
-            var readerSession = tf.Session();
+            var readerSession = session;
             byte[] modelZipData = null;
 
             const string query = "SELECT TOP 1 ModelZipData FROM Sidecar_ModelCheckpoints ORDER BY CheckpointID DESC";
@@ -81,24 +92,29 @@ namespace IReadThis.Recommender.Services.DB
             if (modelZipData != null && modelZipData.Length > 0)
             {
                 Directory.CreateDirectory(tempFileDir);
-                string tempZipPath = Path.Combine(tempFileDir, Guid.NewGuid().ToString() + ".zip");
+                string tempZipPath = Path.Combine(tempFileDir, Guid.NewGuid().ToString() + ZIP_FILE_EXTENSION);
 
                 File.WriteAllBytes(tempZipPath, modelZipData);
                 ZipFile.ExtractToDirectory(tempZipPath, tempFileDir);
+                string checkpointPrefix = Path.Combine(tempFileDir, FILE_NAME);
                 File.Delete(tempZipPath);
 
-                
-                var saver = tf.train.Saver();
-                string checkpointPrefix = Path.Combine(tempFileDir, "model.ckpt");
-                saver.restore(readerSession, checkpointPrefix);
-                Console.WriteLine("Pesos da Rede Neural carregados do SQL Server com sucesso!");
+                if (Directory.Exists(tempFileDir))
+                {
+                    var saver = tf.train.Saver();
+                    saver.restore(readerSession, checkpointPrefix);
+                    Console.WriteLine("Pesos da Rede Neural carregados do SQL Server com sucesso!");
+                    Directory.Delete(tempFileDir, true);
+                }
+                else
+                {
+                    Console.WriteLine("Checkpoint extraído, mas arquivo de pesos não encontrado...");
+                }
             }
             else
             {
                 Console.WriteLine("Nenhum modelo encontrado. Inicializando pesos aleatórios...");
-                readerSession.run(tf.global_variables_initializer());
             }
-            return readerSession;
         }
     }
 }

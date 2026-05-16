@@ -31,6 +31,7 @@ namespace IReadThis.Recommender.Controllers
         {
             try
             {
+                await _recommendationEngine.ProcessAndGenerateBookEmbeddingsAsync();
                 // Inicia o processamento pesado assíncrono
                 await _recommendationEngine.TrainRecommendationModelAsync(epochs);
 

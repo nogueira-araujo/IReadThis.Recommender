@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using DynamicDtoCore;
 using System.Data.Common;
 using System.Data.SqlTypes;
+using IReadThis.Recommender.Services.DB;
 
 namespace IReadThis.Recommender.Controllers
 {
@@ -18,21 +19,14 @@ namespace IReadThis.Recommender.Controllers
         }
 
         [HttpGet(Name = "GetBookCatalog")]
-        public IActionResult Get()
+        public async Task<IActionResult> Get()
         {
-            const string SQL = @"SELECT [BookID] ,[Title] ,[Author] ,[Publisher] ,[ReleaseYear] ,[PageCount]
-                                  FROM [Books]
-                                  order by
-                                  Title, author, ReleaseYear;";
-
             try
             {
-                using (DbConnection conn = ProviderHelper.CreateConnection())
-                {
-                    var factory = new DynamicClassFactory(conn.CreateCommand());
-                    var results = factory.Select<IBook>(SQL);
-                    return Ok(results);
-                }
+                var books = await BookRepository.GetAllBooksAsync();
+
+                return Ok(books);
+
             }
             catch (DbException ex)
             {

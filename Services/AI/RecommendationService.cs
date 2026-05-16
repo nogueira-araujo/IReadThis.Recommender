@@ -2,6 +2,7 @@
 using IReadThis.Recommender.Models;
 using IReadThis.Recommender.Services.AI;
 using System.Text.Json;
+using System.Linq;
 
 public class RecommendationService
 {
@@ -13,19 +14,46 @@ public class RecommendationService
         _generator = generator;
     }
 
-    public async Task<IEnumerable<IBook>> GetRecommendationsAsync(int? profileId, int? birthYear, string sex)
+    public async Task<IEnumerable<IBook>> GetRecommendationsAsync(int? profileId,int? birthYear, string sex)
     {
+        int? birthVal;
+        string sexVal;
+        birthVal = birthYear;
+        sexVal = sex;
+
         // 1. Resolução de Perfil (Mantida a lógica do DynamicDto)
         if (profileId.HasValue)
         {
-            // ... busca no banco ...
+            // Busca os dados do perfil no banco de dados
+            const string profileQuery = @"
+            SELECT BirthYear, Sex 
+            FROM Profiles 
+            WHERE ProfileID = {0}";
+
+            try
+            {
+                using (var conn = ProviderHelper.CreateConnection())
+                {
+                    var factory = new DynamicDtoCore.DynamicClassFactory(conn.CreateCommand());
+                    var result = factory.Select(profileQuery, profileId.Value).FirstOrDefault();
+                    if(result != null) {
+                            birthVal = result.BirthYear;
+                            sexVal = result.Sex;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Erro ao buscar perfil com ID {profileId.Value}.", ex);
+            }
         }
 
-        if (!birthYear.HasValue) throw new ArgumentException("BirthYear é obrigatório.");
+        if (!birthVal.HasValue) throw new ArgumentException("BirthYear é obrigatório.");
+        if (string.IsNullOrWhiteSpace(sexVal)) throw new ArgumentException("Sex é obrigatório.");
 
         // 2. INFERÊNCIA LIMPA: Usamos o gerador que já possui a Session e os pesos carregados
         // Não há tf.Session() aqui, reduzindo latência e uso de memória.
-        var readerVector = _generator.GenerateTensorEmbedding(birthYear.Value, sex);
+        var readerVector = _generator.GenerateTensorEmbedding(birthVal.Value, sexVal);
 
         // 3. Consulta Vetorial (Híbrida)
         return await ExecuteVectorSearch(readerVector);
@@ -61,7 +89,8 @@ public class RecommendationService
                 var command = conn.CreateCommand();
                 // Utilizamos o DynamicDtoCore para mapear o resultado para a interface IBook
                 var factory = new DynamicClassFactory(command);
-                return factory.Select<IBook>(recommendQuery, jsonVector);
+                var books = factory.Select<IBook>(recommendQuery, jsonVector);
+                return books;
             }
         }
         catch (Exception ex)

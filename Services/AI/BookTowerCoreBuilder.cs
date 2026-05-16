@@ -6,10 +6,13 @@ namespace IReadThis.Recommender.Services.AI
 {
     public static class BookTowerCoreBuilder
     {
-        public static BookTowerModel BuildBookTowerCore()
+        public static BookTowerModel BuildBookTowerCore(Session session)
         {
-            // 1. Inicialização do Grafo Computacional [1, 2]
-            var graph = tf.Graph().as_default();
+            if (session == null)
+                throw new ArgumentNullException(nameof(session), "Session cannot be null.");
+
+            // 1. Usar o contexto de grafo da sessão injetada, não criar um novo
+            session.graph.as_default();
 
             // 2. Entradas (Placeholders)
             // Substituem o keras.Input. O -1 indica que o tamanho do lote (batch_size) é dinâmico.

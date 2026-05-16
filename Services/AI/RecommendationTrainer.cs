@@ -18,7 +18,27 @@ namespace IReadThis.Recommender.Services.AI
 
         public RecommendationTrainer(RecommendationTrainerData model)
         {
+            if (model == null)
+                throw new ArgumentNullException(nameof(model), "RecommendationTrainerData cannot be null.");
+
             _model = model;
+
+            // Valida que a Session não é null
+            if (_model.Session == null)
+                throw new InvalidOperationException(
+                    "RecommendationTrainerData.Session é null. A sessão do TensorFlow não foi inicializada corretamente. " +
+                    "Verifique se Program.cs configurou corretamente a SessionManager e se o checkpoint foi carregado.");
+
+            // Garante que as operações de treinamento sejam adicionadas ao grafo onde as variáveis residem
+            try
+            {
+                _model.Session.graph.as_default();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    "Falha ao definir o grafo padrão da sessão. Verifique se a Session está em estado válido.", ex);
+            }
 
             // 1. Lógica de Cruzamento (Dot Product) para Predição
             var predictedRating = tf.reduce_sum(tf.multiply(_model.BookVector, _model.ReaderVector), axis: 1);
@@ -27,11 +47,20 @@ namespace IReadThis.Recommender.Services.AI
             _trueRatingInput = tf.placeholder(tf.float32, shape: new[] { -1 }, name: "true_rating");
 
             // 3. Função de Perda (MSE)
-            _loss = tf.reduce_mean(tf.square(predictedRating - _trueRatingInput));
+            _loss = tf.reduce_mean(tf.square(predictedRating - _trueRatingInput), name: "loss_op");
 
             // 4. Otimizador Adam
             var optimizer = tf.train.AdamOptimizer(learning_rate: 0.001f);
-            _trainOp = optimizer.minimize(_loss);
+
+            try 
+            {
+                _trainOp = optimizer.minimize(_loss);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    "Falha ao inicializar o otimizador. Certifique-se que as variáveis do grafo são treináveis e que a sessão está correta.", ex);
+            }
         }
 
         public float TrainBatch(TrainBatchData data)

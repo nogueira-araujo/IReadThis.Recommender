@@ -6,9 +6,13 @@ namespace IReadThis.Recommender.Services.AI
 {
     public static class ReaderTowerCoreBuilder
     {
-        public static ReaderTowerModel BuildReaderTowerCore()
+        public static ReaderTowerModel BuildReaderTowerCore(Session session)
         {
-            var graph = tf.Graph().as_default();
+            if (session == null)
+                throw new ArgumentNullException(nameof(session), "Session cannot be null.");
+
+            // 1. Usar o contexto de grafo da sessão injetada, não criar um novo
+            session.graph.as_default();
 
             // ==========================================
             // 1. PORTAS DE ENTRADA (PLACEHOLDERS)

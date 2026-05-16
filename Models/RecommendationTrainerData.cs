@@ -8,16 +8,14 @@ namespace IReadThis.Recommender.Models
     /// </summary>
     public sealed class RecommendationTrainerData
     {
-
-        private readonly Session _session;
         // Este modelo é responsável por criar as camadas de Embedding e processar os dados de entrada
         // Ele não contém a lógica de treinamento, apenas a definição da arquitetura da rede neural
-        public Tensor SexInput { get; set; }
-        public Tensor YearInput { get; set; }
-        public Tensor ReaderVector { get; set; }
-        public Tensor CategoryInput { get; set; }
-        public Tensor TextInput { get; set; }
-        public Tensor BookVector { get; set; }
+        public Tensor SexInput { get; private set; }
+        public Tensor YearInput { get; private set; }
+        public Tensor ReaderVector { get; private set; }
+        public Tensor CategoryInput { get; private set; }
+        public Tensor TextInput { get; private set; }
+        public Tensor BookVector { get; private set; }
         public Session Session { get; private set; }
 
         /// <summary>
@@ -28,7 +26,7 @@ namespace IReadThis.Recommender.Models
         {
             if (session == null)
                 throw new ArgumentNullException(nameof(session), "Session cannot be null.");
-            this._session = session;
+            this.Session = session;
         }
         public RecommendationTrainerData(Session session, Tensor sexInput, Tensor yearInput, Tensor readerVector, Tensor categoryInput, Tensor textInput, Tensor bookVector) : this(session)
         {

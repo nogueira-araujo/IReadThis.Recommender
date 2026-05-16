@@ -25,42 +25,51 @@ namespace IReadThis.Recommender.Services.AI
         }
         public float[] GenerateTensorEmbedding(string title, string author, List<int> categoryIds)
         {
-            // 1. PREPARAÇÃO DAS CATEGORIAS (O PADRÃO "PADDING")
-            // Instanciamos um array fixo de 50 posições preenchido com zeros
-            int[] paddedCategories = new int[2];
-
-            // Copiamos os IDs reais do livro, respeitando o limite máximo
-            for (int i = 0; i < Math.Min(categoryIds.Count, 50); i++)
+            try
             {
-                paddedCategories[i] = categoryIds[i];
-            }
+                // 1. PREPARAÇÃO DAS CATEGORIAS (O PADRÃO "PADDING")
+                // Instanciamos um array fixo de 50 posições preenchido com zeros
+                int[] paddedCategories = new int[50];
 
-            // 2. PREPARAÇÃO DO TEXTO (TOKENIZAÇÃO)
-            // Combinamos Título e Autor em uma única string semântica e tokenizamos
-            string rawText = $"{title} {author}";
-            int[] textTokens = rawText.TokenizeText(50);
+                // Copiamos os IDs reais do livro, respeitando o limite máximo
+                for (int i = 0; i < Math.Min(categoryIds.Count, 50); i++)
+                {
+                    paddedCategories[i] = categoryIds[i];
+                }
 
-            // 3. CONVERSÃO PARA TENSORES (NUMPY ARRAYS)
-            // O shape [1, X] indica que estamos processando um "batch" de tamanho 1 (um único livro por vez)
-            var categoryNdArray = np.array(paddedCategories).reshape(new Shape(1, 50));
-            var textNdArray = np.array(textTokens).reshape(new Shape(1, 50));
+                // 2. PREPARAÇÃO DO TEXTO (TOKENIZAÇÃO)
+                // Combinamos Título e Autor em uma única string semântica e tokenizamos
+                string rawText = $"{title} {author}";
+                int[] textTokens = rawText.TokenizeText(50);
 
-            // 4. EXECUÇÃO NO GRAFO (INFERÊNCIA)
-            // Criamos o dicionário de injeção ligando os dados aos Placeholders da rede
-            var feedDict = new FeedItem[]
-            {
+                // 3. CONVERSÃO PARA TENSORES (NUMPY ARRAYS)
+                // O shape [1, X] indica que estamos processando um "batch" de tamanho 1 (um único livro por vez)
+                var categoryNdArray = np.array(paddedCategories).reshape(new Shape(1, 50));
+                var textNdArray = np.array(textTokens).reshape(new Shape(1, 50));
+
+                // 4. EXECUÇÃO NO GRAFO (INFERÊNCIA)
+                // Criamos o dicionário de injeção ligando os dados aos Placeholders da rede
+                var feedDict = new FeedItem[]
+                {
                 new FeedItem(_categoryInput, categoryNdArray),
                 new FeedItem(_textInput, textNdArray)
-            };
+                };
 
-            // Rodamos a sessão informando qual tensor queremos como resultado final
-            var outputTensor = _session.run(_finalEmbedding, feedDict);
+                // Rodamos a sessão informando qual tensor queremos como resultado final
+                var outputTensor = _session.run(_finalEmbedding, feedDict);
 
-            // 5. EXTRAÇÃO DO VETOR
-            // O resultado é o nosso array denso com as características aprendidas (768 dimensões)
-            float[] embeddingVector = outputTensor.ToArray<float>();
+                // 5. EXTRAÇÃO DO VETOR
+                // O resultado é o nosso array denso com as características aprendidas (768 dimensões)
+                float[] embeddingVector = outputTensor.ToArray<float>();
 
-            return embeddingVector;
+                return embeddingVector;
+            }
+            catch (Exception ex)
+            {
+                // Em caso de erro, logamos a exceção e retornamos um vetor vazio
+                Console.WriteLine($"Erro ao gerar embedding: {ex.Message}");
+                return new float[768]; // Retorna um vetor vazio com o mesmo tamanho esperado
+            }
         }
     }
 }
