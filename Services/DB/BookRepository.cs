@@ -108,6 +108,41 @@ namespace IReadThis.Recommender.Services.DB
                 throw new Exception("Erro ao persistir embeddings dos livros no banco de dados.", ex);
             }
         }
+
+        public static IEnumerable<IBook> GetBooksByVector(string jsonVector)
+        {
+            // Query otimizada para o SQL Server 2025 com suporte a vetores
+            // Buscamos os 5 livros com a menor distância de cosseno em relação ao perfil do leitor
+            const string recommendQuery = @"
+                                        SELECT TOP 5 
+                                            b.BookId, 
+                                            b.Title, 
+                                            b.Author, 
+                                            b.Publisher, 
+                                            b.ReleaseYear, 
+                                            b.PageCount
+                                        FROM Books b
+                                        INNER JOIN Sidecar_BookEmbeddings be ON b.BookId = be.BookId
+                                        ORDER BY VECTOR_DISTANCE('cosine', be.Embedding, CAST({0} AS VECTOR(768))) ASC
+                                    ";
+
+            try
+            {
+                using (var conn = ProviderHelper.CreateConnection())
+                {
+                    var command = conn.CreateCommand();
+                    // Utilizamos o DynamicDtoCore para mapear o resultado para a interface IBook
+                    var factory = new DynamicClassFactory(command);
+                    var books = factory.Select<IBook>(recommendQuery, jsonVector);
+                    return books;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log de erro seguindo o padrão de rigor técnico
+                throw new InvalidOperationException("Falha na execução da busca vetorial no SQL Server.", ex);
+            }
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 ﻿using Tensorflow;
 
-namespace IReadThis.Recommender.Services.AI
+namespace IReadThis.Recommender.Models
 {
     /// <summary>
     /// Represents the input and output tensors for a reader tower model, typically used in machine learning scenarios

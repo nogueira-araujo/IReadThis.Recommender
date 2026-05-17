@@ -1,4 +1,5 @@
-﻿using System;
+﻿using IReadThis.Recommender.Models;
+using System;
 using Tensorflow;
 using static Tensorflow.Binding;
 

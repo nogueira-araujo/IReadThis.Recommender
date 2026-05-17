@@ -1,5 +1,4 @@
-﻿using IReadThis.Recommender.Services.AI;
-using Tensorflow;
+﻿using Tensorflow;
 
 namespace IReadThis.Recommender.Models
 {

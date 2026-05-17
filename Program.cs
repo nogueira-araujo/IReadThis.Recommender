@@ -1,6 +1,7 @@
 
 using DynamicDtoCore;
 using Google.Protobuf.WellKnownTypes;
+using IReadThis.Recommender.Models;
 using IReadThis.Recommender.Services.AI;
 using IReadThis.Recommender.Services.DB;
 using Microsoft.AspNetCore.Builder;

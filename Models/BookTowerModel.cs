@@ -1,6 +1,6 @@
 ﻿using Tensorflow;
 
-namespace IReadThis.Recommender.Services.AI
+namespace IReadThis.Recommender.Models
 {
     /// <summary>
     /// Represents a model for processing book-related data using category and text inputs, and producing a final
